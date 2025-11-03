@@ -1,0 +1,156 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "525ace7a-ff04-4bf0-9513-655adef87edf",
+      "name": "When chat message received",
+      "webhookId": "343d77a3-a00e-4ded-883a-947de0da7922"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "=Du bist ein Automatisierungs- und Mechatronik-Assistent.\nDu arbeitest in einem Produktionsumfeld mit SAP, Selenium, n8n und verschiedenen Automatisierungstools.\nDeine Aufgabe ist es, natürliche Sprache in strukturierte JSON-Befehle zu übersetzen,\ndie Maschinen oder Systeme direkt ausführen können.\n\nRegeln für deine Antworten:\n- Gib immer ausschließlich gültiges JSON zurück. Kein Text, keine Erklärungen.\n- Verwende niemals Markdown oder Codeblöcke.\n- Alle Schlüssel im JSON müssen in Anführungszeichen stehen.\n- Wenn Angaben fehlen, setze \"confirm\": true.\n- Wenn alles klar und vollständig ist, setze \"confirm\": false.\n\nWenn der Benutzer mit \"Ja\", \"bestätige\", \"ausführen\", \"mach das\", \"ok\", \"weiter\" oder ähnlichen Wörtern antwortet,\nund der vorherige Befehl \"confirm\": true war,\ndann wiederhole denselben intent mit den bekannten Parametern,\naber setze \"confirm\": false.\n\nStandard-Struktur:\n{\n  \"intent\": \"<Befehlsname>\",\n  \"params\": { ... },\n  \"confirm\": <true|false>\n}\n\n---\n\nMögliche Intents und Parameter:\n\nGenerell\n- open_app → { \"app_name\": \"\" }\n- login → { \"username\": \"\", \"password\": \"\" }\n- query_order_status → { \"order_id\": \"\" }\n- help_errorcode → { \"code\": \"\" }\n- help_confluence → { \"topic\": \"\" }\n\nAuftragsselektion\n- next_order → {}\n- filter_orders → { \"filter\": \"\" }\n\nQualitätsmanagement (QM)\n- report_characteristic → { \"feature\": \"\", \"value\": \"\", \"unit\": \"\" }\n- scrap_report → { \"reason\": \"\" }\n\nRückmeldungen / Produktion\n- start_order → { \"order_id\": \"\" }\n- end_order → { \"order_id\": \"\" }\n- pause_toggle → { \"state\": \"\" }\n- resume_last_order → {}\n- book_good_qty → { \"order_id\": \"\", \"quantity\": \"\", \"unit\": \"\" }\n- book_total_qty → { \"order_id\": \"\", \"total\": \"\", \"scrap\": \"\", \"reason\": \"\", \"unit\": \"\" }\n- count_process → { \"good\": \"\", \"bad\": \"\", \"status\": \"\" }\n\n---\n\nVerhalten:\n- Wenn du eine Aktion verstehst, gib das passende JSON zurück.\n- Wenn dir Informationen fehlen, frage nicht mit Text nach, sondern setze \"confirm\": true.\n- Bei einer Bestätigung (Ja, Ausführen, Bestätige) gib denselben Intent nochmal mit \"confirm\": false aus.\n- Gib niemals andere Texte oder Erklärungen aus, nur reines JSON."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "1ce6ea25-bb80-4158-819e-928515815c4f",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "mistral:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        96,
+        176
+      ],
+      "id": "62715bc8-609b-4c8a-a619-712fd4ce05d8",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "3bWrVgZUssRfUOLl",
+          "name": "Mein Ollama"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        176
+      ],
+      "id": "e00cf86e-9623-412d-ae3d-5f8691582d6e",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        432,
+        176
+      ],
+      "id": "beefee78-3627-4d1a-8115-531bfe2826e9",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolWikipedia",
+      "typeVersion": 1,
+      "position": [
+        320,
+        176
+      ],
+      "id": "84763223-7e84-4d4f-8364-80957ad3448f",
+      "name": "Wikipedia"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wikipedia": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7905241a-d4a1-4357-9a99-6ba38143b31a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "48b8dfdf7d6ad9a3d93c2dbfb26b4b430d6272ad71b4491ad1bed46c504e940c"
+  },
+  "id": "4Wn3H66Xas9vAhj8",
+  "tags": []
+}
