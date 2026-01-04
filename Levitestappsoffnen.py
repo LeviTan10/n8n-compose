@@ -90,6 +90,7 @@ class SapRobot:
             return {"status": "error", "message": str(e)}
 
     # ▼▼▼ Core logic (same flow, only DE/EN text support) ▼▼▼
+    # NOTE: op_plant is accepted but NEVER entered anywhere (requested).
     def open_app(self, personnel_number, op_plant, order_id, app_name, confirmation_id=None):
         print("Executing workflow: open_app (Tab Strategy)...")
         try:
@@ -197,22 +198,23 @@ class SapRobot:
                 (By.XPATH, "//input[@placeholder='Search' or @placeholder='Suchen']")
             ))
             search_input.click()
-            time.sleep(0.5)
+            time.sleep(0.2)
+
+            # ✅ IMPORTANT: Make sure Search/Suchen is EMPTY (so op_plant never appears there)
+            search_input.send_keys(Keys.CONTROL, "a")
+            search_input.send_keys(Keys.DELETE)
+            time.sleep(0.2)
 
             actions = ActionChains(self.driver)
 
-            print(f"👉 Tab to Order, input: {order_id}")
+            # TAB to "Auftrag" / Order field and type order_id
+            print(f"👉 Tab to Auftrag/Order, input: {order_id}")
             actions.send_keys(Keys.TAB).perform()
-            time.sleep(0.5)
+            time.sleep(0.4)
             self.driver.switch_to.active_element.send_keys(order_id)
-            time.sleep(0.5)
 
-            print(f"👉 Tab to Op. Plant/Werk, input: {op_plant}")
-            actions.send_keys(Keys.TAB).perform()
-            time.sleep(0.5)
-            self.driver.switch_to.active_element.send_keys(op_plant)
-            self.driver.switch_to.active_element.send_keys(Keys.TAB)
-            time.sleep(1)
+            # ✅ DO NOT enter op_plant anywhere (requested)
+            # (No extra TAB to next field, no typing op_plant)
 
             # --- Go/Start button (DE/EN) ---
             print("Step 4: Click Go/Start...")
@@ -225,21 +227,20 @@ class SapRobot:
                     self.driver.find_element(By.XPATH, "//*[text()='Start' or text()='Go']").click()
             time.sleep(3)
 
-            # 5. Klick Zeile (priorisiere confirmation_id / Rückmeldung)
+            # 5. Click row (prefer confirmation_id / Rückmeldung)
             if confirmation_id:
-                print(f"Step 5: Klick Rückmeldung {confirmation_id}...")
+                print(f"Step 5: Click Rückmeldung {confirmation_id}...")
                 row = self.long_wait.until(EC.element_to_be_clickable(
                     (By.XPATH, f"//*[text()='{confirmation_id}']/ancestor::tr[1]")
                 ))
             else:
-                print(f"Step 5: Klick Auftrag {order_id}...")
+                print(f"Step 5: Click Auftrag {order_id}...")
                 row = self.long_wait.until(EC.element_to_be_clickable(
                     (By.XPATH, f"//*[text()='{order_id}']/ancestor::tr[1]")
                 ))
 
             row.click()
             time.sleep(2)
-
 
             # --- Open final app ---
             print(f"Step 6: Open App '{app_name}'...")
@@ -278,7 +279,7 @@ print("Robot is ready and waiting for commands.")
 def dispatch_action(data_wrapper: dict):
     print(f"Received data wrapper for dispatch: {data_wrapper}")
     try:
-        # ✅ FIX: accept BOTH formats
+        # accept BOTH formats:
         # A) direct: {"action":"login","params":{...}}
         # B) wrapped: {"output":"...{...}..."}
         if isinstance(data_wrapper, dict) and "action" in data_wrapper:
@@ -311,7 +312,7 @@ def dispatch_action(data_wrapper: dict):
         elif action == "open_app":
             safe_params = {
                 "personnel_number": params.get("personnel_number"),
-                "op_plant": params.get("op_plant"),
+                "op_plant": params.get("op_plant"),  # accepted but not typed
                 "order_id": params.get("order_id"),
                 "app_name": params.get("app_name"),
                 "confirmation_id": params.get("confirmation_id")
