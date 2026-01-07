@@ -1,0 +1,145 @@
+const items = $input.all();
+
+function lev(a, b) {
+  a = a || ""; b = b || "";
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, (_, i) => Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    dp[i][j] = Math.min(
+      dp[i-1][j] + 1,
+      dp[i][j-1] + 1,
+      dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)
+    );
+  }
+  return dp[m][n];
+}
+
+function norm(s) {
+  return (s || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/[.?!]+$/g, "");
+}
+
+function fix(t) {
+  t = t.replace(/^(erffernet|erffne|erfne|offnen|ofnen|offne|ofne|oeffne|oefne|öffnet|offnet|ofnet|öffnen)\b/, "öffne");
+  t = t.replace(/\b(srp|sab|sapp|saap|essap)\b/g, "sap");
+  t = t.replace(/\b(advenced|advansed|advanst|advansd)\b/g, "advanced");
+  t = t.replace(/\b(manufactoring|manufactering|manufakturing|manufakturierung)\b/g, "manufacturing");
+  t = t.replace(/\bkanbanboard\b/g, "kanban board");
+  t = t.replace(/\borderboard\b/g, "order board");
+  return t;
+}
+
+// Apps
+const APPS = [
+  { canon: "advanced manufacturing", synonyms: ["advanced manufacturing", "advanced", "am"] },
+  { canon: "production order board", synonyms: ["production order board", "order board", "production board", "auftragsboard", "production order"] },
+  { canon: "production monitor", synonyms: ["production monitor", "monitor", "produktionsmonitor"] },
+  { canon: "show confirmation", synonyms: ["show confirmation", "show confirmations", "confirmations", "rückmeldungen anzeigen", "bestaetigungen anzeigen"] },
+  { canon: "revert/change confirmations", synonyms: ["revert/change confirmations", "revert confirmations", "change confirmations", "confirmations ändern", "bestaetigungen aendern", "rückmeldungen ändern", "storno rückmeldung"] },
+  { canon: "kanban board", synonyms: ["kanban board", "kanban", "kanbanboard"] },
+];
+
+const CANON = [
+  "öffne sap",
+  "öffne advanced manufacturing",
+  "öffne production order board",
+  "öffne production monitor",
+  "öffne show confirmation",
+  "öffne revert/change confirmations",
+  "öffne kanban board",
+  "logge mich ein",
+  "nächster auftrag",
+  "filter aufträge",
+  "status auftrag",
+  "pausiere",
+  "weiter",
+];
+
+// Robust: Text + Segments aus verschiedenen Whisper-Formaten holen
+function pickWhisper(itemJson) {
+  const j = itemJson || {};
+
+  // Text kann direkt da sein
+  if (typeof j.text === "string" && j.text.trim()) return { text: j.text, segments: j.segments };
+
+  // Manche Nodes liefern body
+  if (j.body && typeof j.body.text === "string" && j.body.text.trim()) return { text: j.body.text, segments: j.body.segments };
+
+  // Manche liefern response/data
+  if (j.response && typeof j.response.text === "string" && j.response.text.trim()) return { text: j.response.text, segments: j.response.segments };
+
+  // Wenn data ein JSON-String ist
+  if (typeof j.data === "string" && j.data.trim()) {
+    try {
+      const o = JSON.parse(j.data);
+      if (o && typeof o.text === "string") return { text: o.text, segments: o.segments };
+    } catch {}
+  }
+
+  return { text: "", segments: null };
+}
+
+for (const item of items) {
+  const { text, segments } = pickWhisper(item.json);
+
+  let t = fix(norm(text));
+
+  // Confidence-Gate (wenn Whisper sowas liefert)
+  const seg0 = (segments && segments[0]) ? segments[0] : {};
+  const noSpeech = (seg0.no_speech_prob ?? 0);
+  const logp = (seg0.avg_logprob ?? 0);
+
+  if (noSpeech > 0.45 || logp < -1.2 || t.length < 2) {
+    item.json = { cleanText: "NO_COMMAND", rawText: text };
+    continue;
+  }
+
+  // "öffne <app>" matchen
+  if (/^öffne\b/.test(t)) {
+    const rest = t.split(" ").slice(1).join(" ").trim();
+    let bestApp = { canon: null, d: 1e9 };
+
+    for (const a of APPS) {
+      for (const s of a.synonyms) {
+        const d = lev(rest, s);
+        if (d < bestApp.d) bestApp = { canon: a.canon, d };
+      }
+    }
+
+    if (bestApp.canon && bestApp.d <= 9) {
+      item.json = { cleanText: `öffne ${bestApp.canon}`, rawText: text };
+      continue;
+    }
+  }
+
+  // Fuzzy auf CANON
+  let best = { cmd: null, d: 1e9 };
+  for (const c of CANON) {
+    const d = lev(t, c);
+    if (d < best.d) best = { cmd: c, d };
+  }
+
+  let clean = (best.d <= 6) ? best.cmd : t;
+
+  // harte Regeln
+  if (/sap/.test(t) && /öffne/.test(t)) clean = "öffne sap";
+  if (/advanced/.test(t) && /manufacturing/.test(t) && /öffne/.test(t)) clean = "öffne advanced manufacturing";
+  if (/production/.test(t) && /monitor/.test(t) && /öffne/.test(t)) clean = "öffne production monitor";
+  if (/production/.test(t) && /order/.test(t) && /board/.test(t) && /öffne/.test(t)) clean = "öffne production order board";
+  if (/show/.test(t) && /confirm/.test(t) && /öffne/.test(t)) clean = "öffne show confirmation";
+  if ((/revert/.test(t) || /change/.test(t) || /storno/.test(t)) && /confirm/.test(t) && /öffne/.test(t)) clean = "öffne revert/change confirmations";
+  if (/kanban/.test(t) && /öffne/.test(t)) clean = "öffne kanban board";
+
+  // Ausgabe klein halten (damit nicht der ganze Whisper-Text weitergeht)
+  item.json = { cleanText: clean, rawText: text };
+}
+
+// OPTIONAL: NO_COMMAND komplett rauswerfen (wenn du willst):
+// return items.filter(i => i.json.cleanText !== "NO_COMMAND");
+
+return items;
