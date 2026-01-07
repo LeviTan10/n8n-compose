@@ -31,8 +31,8 @@ services:
     restart: always
     entrypoint: >
       sh -c "
-        ollama serve & 
-        sleep 5 && 
+        ollama serve &
+        sleep 5 &&
         ollama pull PetrosStav/gemma3-tools:4b &&
         wait
       "
@@ -49,39 +49,49 @@ services:
     volumes:
       - db_storage:/var/lib/postgresql/data
       - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    ports:
+      - "5433:5432"
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
       - llm_net
 
+  whisper:
+    image: onerahmet/openai-whisper-asr-webservice:latest
+    container_name: whisper
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - ASR_MODEL=small
+      - ASR_ENGINE=openai_whisper
+    networks:
+      - llm_net
+
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
+    network_mode: "host"
     environment:
       - DB_TYPE=postgresdb
-      - DB_POSTGRESDB_HOST=postgres
-      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_HOST=127.0.0.1
+      - DB_POSTGRESDB_PORT=5433
       - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
       - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - N8N_SECURE_COOKIE=false
-    ports:
-      - 5678:5678
-    links:
-      - postgres
+      - WEBHOOK_URL=https://kennith-fumaric-gaye.ngrok-free.dev/
+      - N8N_EDITOR_BASE_URL=https://kennith-fumaric-gaye.ngrok-free.dev
+      - N8N_PROXY_HOPS=1
     volumes:
       - n8n_storage:/home/node/.n8n
     depends_on:
       postgres:
         condition: service_healthy
-      ollama:
-        condition: service_started
-    networks:
-      - llm_net
 
 volumes:
   ollama_data:
