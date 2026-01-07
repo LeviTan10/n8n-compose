@@ -85,6 +85,8 @@ services:
         condition: service_started
     networks:
       - llm_net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   ollama_data:
