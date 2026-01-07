@@ -59,6 +59,18 @@ services:
     networks:
       - llm_net
 
+  whisper:
+    image: ghcr.io/ahmetoner/whisper-asr-webservice:latest
+    container_name: whisper
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+    environment:
+      - ASR_MODEL=small
+      - ASR_ENGINE=openai_whisper
+    networks:
+      - llm_net
+
   n8n:
     image: docker.n8n.io/n8nio/n8n
     restart: always
@@ -85,15 +97,3 @@ volumes:
   ollama_data:
   db_storage:
   n8n_storage:
-
-  whisper:
-    image: ghcr.io/ahmetoner/whisper-asr-webservice:latest
-    container_name: whisper
-    restart: unless-stopped
-    ports:
-      - "9000:9000"
-    environment:
-      - ASR_MODEL=small
-      - ASR_ENGINE=openai_whisper
-    networks:
-      - llm_net
