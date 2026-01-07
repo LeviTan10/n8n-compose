@@ -69,9 +69,9 @@ services:
       - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
       - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
       - N8N_SECURE_COOKIE=false
-      - WEBHOOK_URL= https://kennith-fumaric-gaye.ngrok-free.dev
-      - N8N_EDITOR_BASE_URL= https://kennith-fumaric-gaye.ngrok-free.dev
-      - N8N_PROXY_HOPS= 1
+      - WEBHOOK_URL=https://kennith-fumaric-gaye.ngrok-free.dev
+      - N8N_EDITOR_BASE_URL=https://kennith-fumaric-gaye.ngrok-free.dev
+      - N8N_PROXY_HOPS=1
     ports:
       - 5678:5678
     links:
