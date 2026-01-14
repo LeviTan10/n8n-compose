@@ -273,7 +273,7 @@ class SapRobot:
         # Bilingual Mapping
         phase_map = {
             "setup": ["Setup", "Rüsten"],
-            "processing": ["Processing", "Bearbeitung", "Bearbeiten"],
+            "processing": ["Processing", "Bearbeitung", "Bearbeiten", "Verarbeitung"],
             "teardown": ["Teardown", "Abrüsten"]
         }
         
