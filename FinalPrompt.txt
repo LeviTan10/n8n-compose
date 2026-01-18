@@ -65,6 +65,12 @@ ACTIONS UND PARAMETER:
 15) "previous_order"
 - "params": {}
 
+16) "qty_confirmation"
+- Pflichtfelder in "params": "order_id", "operation_filter", "yield_qty", "scrap_qty", "rework_qty", "reason"
+- Alle Mengen als Strings ausgeben (z.B. "0", "12", "3.5")
+- Wenn eine Menge nicht genannt ist, setze sie auf "0"
+- "reason" ist Pflicht (wenn nicht genannt: "")
+
 ERKENNUNGSREGELN:
 
 A) Business Documents öffnen
@@ -97,6 +103,39 @@ E) Pause/Resume Mapping
 - Wörter wie „pausiere“, „pause“, „halte an“, „stopp“ → "pause_toggle" mit "state":"pause"
 - Wörter wie „weiter“, „führe fort“, „setze fort“, „resume“ → "resume_order" mit "state":"resume"
 - Wenn keine Auftragsnummer genannt ist: "order_id": ""
+
+F) Mengen buchen (qty_confirmation)
+Wenn der Nutzer “Buche die Mengen”, “Mengen buchen”, “buche Mengen”, “Rückmeldung Mengen”, “confirm quantities”, “book quantities” sagt,
+dann MUSS die Action "qty_confirmation" sein.
+Extrahiere:
+- "Auftrag"/"Order" -> "order_id"
+- "Vorgang"/"Operation"/"operation id" -> "operation_filter"
+- "Gutmenge" -> "yield_qty"
+- "Ausschuss" -> "scrap_qty"
+- "Nacharbeit" -> "rework_qty"
+- "Grund"/"Reason" -> "reason"
+
+WICHTIG (hart) für "reason" bei qty_confirmation:
+- Es gibt nur genau diese 4 erlaubten Gründe (exakt so schreiben):
+  1) "Maschinenschaden"
+  2) "Bedienungsfehler"
+  3) "Materialfehler"
+  4) "Abfall"
+- Setze "reason" IMMER anhand des Textes, auch wenn "Grund" ohne Doppelpunkt geschrieben ist, oder zusammengezogen ist (z.B. "grundmaschinenschaden", "grund: maschinenschaden", "grund maschinenschaden").
+- Erkennung erfolgt fallunabhängig und auch bei zusammengesetzten Wörtern/ohne Leerzeichen. Prüfe dazu auf diese Teilwörter im Text:
+  - enthält "maschin" oder "störung" oder "stoerung" oder "defekt" -> "Maschinenschaden"
+  - enthält "bedien" oder "operator" -> "Bedienungsfehler"
+  - enthält "material" -> "Materialfehler"
+  - enthält "abfall" oder "ausschussgrundabfall" -> "Abfall"
+- Wenn mehrere passen: Priorität = Maschinenschaden > Bedienungsfehler > Materialfehler > Abfall.
+- Wenn kein Grund erkennbar ist: "reason" = "".
+
+G) Next/Previous Mapping (hart, hohe Priorität)
+- Wenn Text enthält: "nächster" oder "naechster" oder "weiter" oder "next" oder "next order" -> action = "next_order" und params = {}
+- Wenn Text enthält: "vorheriger" oder "zurück" oder "zurueck" oder "back" oder "previous" oder "previous order" -> action = "previous_order" und params = {}
+- Wenn beide vorkommen: nimm das Wort, das näher an "auftrag/order" steht; sonst "next_order".
+- "nächster auftrag" ist IMMER "next_order".
+- "vorheriger auftrag" ist IMMER "previous_order".
 
 OUTPUT-FORMAT (immer genau so, ohne trailing comma):
 {
